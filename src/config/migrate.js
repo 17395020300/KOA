@@ -1,7 +1,6 @@
 const dotenv = require('dotenv');
 const fs = require('fs');
 const path = require('path');
-const dotenv = require('dotenv');
 
 // 加载环境变量
 dotenv.config();
@@ -73,28 +72,36 @@ async function migrate() {
         await Friend.create({
             userId: user1.id,
             friendId: user2.id,
-            remark: '好友2',
+            status: 1 // 1表示已添加为好友
+        });
+        
+        await Friend.create({
+            userId: user1.id,
+            friendId: user3.id,
             status: 1
         });
         
         await Friend.create({
             userId: user2.id,
             friendId: user1.id,
-            remark: '好友1',
             status: 1
         });
         
         await Friend.create({
-            userId: user1.id,
+            userId: user2.id,
             friendId: user3.id,
-            remark: '好友3',
             status: 1
         });
         
         await Friend.create({
             userId: user3.id,
             friendId: user1.id,
-            remark: '好友1',
+            status: 1
+        });
+        
+        await Friend.create({
+            userId: user3.id,
+            friendId: user2.id,
             status: 1
         });
         
@@ -105,52 +112,34 @@ async function migrate() {
         await Message.create({
             senderId: user1.id,
             receiverId: user2.id,
-            content: '你好，这是一条测试消息！',
+            content: '你好，测试用户2！',
             type: 'text',
-            status: 3 // 已读
+            status: 1 // 1表示已发送
         });
         
         await Message.create({
             senderId: user2.id,
             receiverId: user1.id,
-            content: '收到，这是回复的测试消息！',
+            content: '你好，测试用户1！很高兴认识你！',
             type: 'text',
-            status: 3 // 已读
+            status: 1
         });
         
         await Message.create({
             senderId: user3.id,
             receiverId: user1.id,
-            content: '嗨，用户1，很高兴认识你！',
+            content: '大家好！',
             type: 'text',
-            status: 2 // 已送达但未读
+            status: 1
         });
         
         console.log('测试消息创建成功！');
         
-        // 创建一个默认的头像文件
-        console.log('正在创建默认头像...');
-        const defaultAvatarDir = path.resolve(__dirname, '../../../public/uploads/avatars');
-        if (!fs.existsSync(defaultAvatarDir)) {
-            fs.mkdirSync(defaultAvatarDir, { recursive: true });
-        }
-        
-        // 创建一个简单的SVG作为默认头像
-        const defaultAvatarSvg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="50" cy="50" r="45" fill="#4CAF50"/>
-  <circle cx="50" cy="35" r="15" fill="#FFFFFF"/>
-  <path d="M30,70 Q50,90 70,70" fill="none" stroke="#FFFFFF" stroke-width="5"/>
-</svg>`;
-        
-        fs.writeFileSync(path.resolve(defaultAvatarDir, 'default.png'), defaultAvatarSvg, 'utf8');
-        console.log('默认头像创建成功！');
-        
         console.log('数据库迁移完成！');
-        console.log('\n测试账号信息：');
-        console.log(`账号1: 手机号: 13800138001, 密码: 123456`);
-        console.log(`账号2: 手机号: 13800138002, 密码: 123456`);
-        console.log(`账号3: 手机号: 13800138003, 密码: 123456`);
+        console.log('\n测试用户信息：');
+        console.log('用户1：手机号 13800138001，密码 123456');
+        console.log('用户2：手机号 13800138002，密码 123456');
+        console.log('用户3：手机号 13800138003，密码 123456');
         
         // 关闭数据库连接
         await sequelize.close();
@@ -161,5 +150,5 @@ async function migrate() {
     }
 }
 
-// 执行迁移
+// 执行迁移函数
 migrate();
