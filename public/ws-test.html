@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket 测试工具</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .logs {
+            width: 100%;
+            height: 300px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            overflow-y: auto;
+            background-color: #f5f5f5;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        .message {
+            margin-bottom: 8px;
+        }
+        .message.sent {
+            color: blue;
+        }
+        .message.received {
+            color: green;
+        }
+        .message.system {
+            color: #666;
+            font-style: italic;
+        }
+        .separator {
+            height: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>WebSocket 测试工具</h1>
+    
+    <div class="input-group">
+        <label for="token">JWT Token:</label>
+        <input type="text" id="token" placeholder="输入你的JWT Token">
+    </div>
+    
+    <div class="input-group">
+        <button id="connectBtn">连接 WebSocket</button>
+        <button id="disconnectBtn" disabled>断开连接</button>
+    </div>
+    
+    <div class="separator"></div>
+    
+    <div class="input-group">
+        <label for="receiverId">接收者ID:</label>
+        <input type="text" id="receiverId" placeholder="输入好友ID">
+    </div>
+    
+    <div class="input-group">
+        <label for="message">消息内容:</label>
+        <textarea id="message" rows="4" placeholder="输入消息内容"></textarea>
+    </div>
+    
+    <div class="input-group">
+        <button id="sendBtn" disabled>发送消息</button>
+        <button id="readBtn" disabled>标记已读</button>
+        <button id="recallBtn" disabled>撤回消息</button>
+    </div>
+    
+    <div class="separator"></div>
+    
+    <div class="input-group">
+        <label for="messageId">消息ID (用于撤回):</label>
+        <input type="text" id="messageId" placeholder="输入要撤回的消息ID">
+    </div>
+    
+    <div class="separator"></div>
+    
+    <div class="input-group">
+        <label>连接状态: <span id="status" style="color: red;">未连接</span></label>
+    </div>
+    
+    <div class="input-group">
+        <label>消息日志:</label>
+        <div id="logs" class="logs"></div>
+    </div>
+    
+    <script>
+        const tokenInput = document.getElementById('token');
+        const receiverIdInput = document.getElementById('receiverId');
+        const messageInput = document.getElementById('message');
+        const messageIdInput = document.getElementById('messageId');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const sendBtn = document.getElementById('sendBtn');
+        const readBtn = document.getElementById('readBtn');
+        const recallBtn = document.getElementById('recallBtn');
+        const statusElement = document.getElementById('status');
+        const logsElement = document.getElementById('logs');
+        
+        let socket = null;
+        let lastMessageId = null;
+        
+        // 添加日志到日志区域
+        function addLog(message, type = 'system') {
+            const logElement = document.createElement('div');
+            logElement.className = `message ${type}`;
+            const timestamp = new Date().toLocaleTimeString();
+            logElement.textContent = `[${timestamp}] ${message}`;
+            logsElement.appendChild(logElement);
+            logsElement.scrollTop = logsElement.scrollHeight;
+        }
+        
+        // 连接WebSocket
+        connectBtn.addEventListener('click', () => {
+            const token = tokenInput.value.trim();
+            if (!token) {
+                alert('请输入JWT Token');
+                return;
+            }
+            
+            try {
+                // 确定WebSocket连接地址
+                const isHttps = window.location.protocol === 'https:';
+                const wsProtocol = isHttps ? 'wss:' : 'ws:';
+                const wsHost = window.location.hostname;
+                const wsPort = 3000; // 假设服务端运行在3000端口
+                const wsUrl = `${wsProtocol}//${wsHost}:${wsPort}/ws`;
+                
+                // 创建WebSocket连接，并在请求头中携带Token
+                const headers = new Headers();
+                headers.append('Authorization', `Bearer ${token}`);
+                
+                socket = new WebSocket(wsUrl, [], {
+                    headers: headers
+                });
+                
+                // WebSocket事件处理
+                socket.onopen = () => {
+                    addLog('WebSocket 连接已建立');
+                    statusElement.textContent = '已连接';
+                    statusElement.style.color = 'green';
+                    connectBtn.disabled = true;
+                    disconnectBtn.disabled = false;
+                    sendBtn.disabled = false;
+                    readBtn.disabled = false;
+                    recallBtn.disabled = false;
+                };
+                
+                socket.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        addLog(`收到消息: ${JSON.stringify(data)}`, 'received');
+                        
+                        // 如果是新消息，保存消息ID用于测试撤回
+                        if (data.type === 'new_message' || data.type === 'message_sent') {
+                            if (data.data && data.data.id) {
+                                lastMessageId = data.data.id;
+                                messageIdInput.value = lastMessageId;
+                                addLog(`最后发送的消息ID: ${lastMessageId}`);
+                            }
+                        }
+                    } catch (e) {
+                        addLog(`收到非JSON消息: ${event.data}`, 'received');
+                    }
+                };
+                
+                socket.onclose = () => {
+                    addLog('WebSocket 连接已关闭');
+                    statusElement.textContent = '未连接';
+                    statusElement.style.color = 'red';
+                    connectBtn.disabled = false;
+                    disconnectBtn.disabled = true;
+                    sendBtn.disabled = true;
+                    readBtn.disabled = true;
+                    recallBtn.disabled = true;
+                    socket = null;
+                };
+                
+                socket.onerror = (error) => {
+                    addLog(`WebSocket 错误: ${error.message}`, 'system');
+                };
+            } catch (e) {
+                addLog(`连接失败: ${e.message}`, 'system');
+            }
+        });
+        
+        // 断开WebSocket连接
+        disconnectBtn.addEventListener('click', () => {
+            if (socket) {
+                socket.close();
+            }
+        });
+        
+        // 发送消息
+        sendBtn.addEventListener('click', () => {
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                addLog('WebSocket未连接', 'system');
+                return;
+            }
+            
+            const receiverId = receiverIdInput.value.trim();
+            const message = messageInput.value.trim();
+            
+            if (!receiverId || !message) {
+                alert('请输入接收者ID和消息内容');
+                return;
+            }
+            
+            const messageData = {
+                type: 'text_message',
+                data: {
+                    receiverId: parseInt(receiverId),
+                    content: message
+                }
+            };
+            
+            socket.send(JSON.stringify(messageData));
+            addLog(`发送消息: ${JSON.stringify(messageData)}`, 'sent');
+            messageInput.value = '';
+        });
+        
+        // 标记消息已读
+        readBtn.addEventListener('click', () => {
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                addLog('WebSocket未连接', 'system');
+                return;
+            }
+            
+            const receiverId = receiverIdInput.value.trim();
+            
+            if (!receiverId) {
+                alert('请输入接收者ID');
+                return;
+            }
+            
+            const readData = {
+                type: 'message_read',
+                data: {
+                    friendId: parseInt(receiverId)
+                }
+            };
+            
+            socket.send(JSON.stringify(readData));
+            addLog(`标记消息已读: ${JSON.stringify(readData)}`, 'sent');
+        });
+        
+        // 撤回消息
+        recallBtn.addEventListener('click', () => {
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                addLog('WebSocket未连接', 'system');
+                return;
+            }
+            
+            const messageId = messageIdInput.value.trim();
+            
+            if (!messageId) {
+                alert('请输入要撤回的消息ID');
+                return;
+            }
+            
+            const recallData = {
+                type: 'message_recall',
+                data: {
+                    messageId: parseInt(messageId)
+                }
+            };
+            
+            socket.send(JSON.stringify(recallData));
+            addLog(`撤回消息: ${JSON.stringify(recallData)}`, 'sent');
+        });
+        
+        // 页面加载完成后，尝试从URL参数中获取Token
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+            if (token) {
+                tokenInput.value = token;
+            }
+        });
+    </script>
+</body>
+</html>

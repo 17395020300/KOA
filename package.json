@@ -1,0 +1,41 @@
+{
+  "name": "chat-system-koa",
+  "version": "1.0.0",
+  "description": "Node.js 聊天室系统，基于 KOA2 和 WebSocket",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "migrate": "node ./src/config/migrate.js",
+    "test-db": "node test-db-connection.js"
+  },
+  "keywords": [
+    "chat",
+    "koa2",
+    "websocket",
+    "nodejs",
+    "mysql",
+    "redis"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.5",
+    "ioredis": "^5.3.2",
+    "jsonwebtoken": "^9.0.2",
+    "koa": "^2.15.0",
+    "koa-bodyparser": "^4.4.1",
+    "koa-jwt": "^4.0.4",
+    "koa-router": "^12.0.1",
+    "koa-static": "^5.0.0",
+    "mysql2": "^3.9.1",
+    "nodemon": "^3.0.3",
+    "sequelize": "^6.35.2",
+    "ws": "^8.16.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
